@@ -41,6 +41,7 @@ export default function AdminDashboardPage() {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [fixtureDate, setFixtureDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedProvider, setSelectedProvider] = useState<"ALL" | "API_SPORTS" | "FOOTBALL_DATA" | "THESPORTSDB">("ALL");
+  const [fixtureSearchQuery, setFixtureSearchQuery] = useState("");
   const [loadingFixtures, setLoadingFixtures] = useState(false);
 
   // Sync Action
@@ -667,41 +668,114 @@ export default function AdminDashboardPage() {
             </button>
           </div>
 
-          {/* Fixtures List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {fixtures.map((f) => (
-              <div
-                key={f.id}
-                className="bg-[#11131c] border border-slate-800 hover:border-purple-500/40 rounded-xl p-4 flex items-center justify-between gap-4 transition-all"
-              >
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                    <span className="font-semibold text-purple-300">{f.league_name}</span>
-                    <span>•</span>
-                    <span className="font-mono">{f.kickoff_time.slice(11, 16)} UTC</span>
-                    {f.source && (
-                      <span className="ml-1 px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-mono text-[9px] uppercase border border-slate-700">
-                        {f.source}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 font-display text-base font-bold text-white truncate">
-                    <img src={f.home_logo} className="w-5 h-5 object-contain" alt="" />
-                    <span>{f.home_team} vs {f.away_team}</span>
-                    <img src={f.away_logo} className="w-5 h-5 object-contain" alt="" />
-                  </div>
-                </div>
-
+          {/* Search Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#11131c] border border-slate-800 p-3 rounded-xl">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3 pointer-events-none" />
+              <input
+                type="text"
+                value={fixtureSearchQuery}
+                onChange={(e) => setFixtureSearchQuery(e.target.value)}
+                placeholder="Search team (e.g. Arsenal, Real Madrid, Bayern), league, or country..."
+                className="w-full pl-10 pr-9 py-2 rounded-lg bg-[#161824] border border-slate-700 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-medium"
+              />
+              {fixtureSearchQuery && (
                 <button
-                  onClick={() => handleSelectFixtureToCreate(f)}
-                  className="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-display text-xs font-bold uppercase tracking-wider shrink-0 cursor-pointer shadow-sm"
+                  onClick={() => setFixtureSearchQuery("")}
+                  className="p-1 text-slate-400 hover:text-white absolute right-2.5 top-2 rounded cursor-pointer"
+                  title="Clear search"
                 >
-                  Create Tip
+                  <X className="w-3.5 h-3.5" />
                 </button>
-              </div>
-            ))}
+              )}
+            </div>
+
+            <div className="flex items-center justify-between sm:justify-end gap-2 text-xs text-slate-400 shrink-0 px-1">
+              <span className="font-mono text-[11px] bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
+                {fixtures.filter((f) => {
+                  if (!fixtureSearchQuery.trim()) return true;
+                  const q = fixtureSearchQuery.toLowerCase();
+                  return (
+                    f.home_team.toLowerCase().includes(q) ||
+                    f.away_team.toLowerCase().includes(q) ||
+                    f.league_name.toLowerCase().includes(q) ||
+                    (f.league_country && f.league_country.toLowerCase().includes(q))
+                  );
+                }).length} of {fixtures.length} fixtures
+              </span>
+            </div>
           </div>
+
+          {/* Fixtures List */}
+          {(() => {
+            const filteredFixtures = fixtures.filter((f) => {
+              if (!fixtureSearchQuery.trim()) return true;
+              const q = fixtureSearchQuery.toLowerCase();
+              return (
+                f.home_team.toLowerCase().includes(q) ||
+                f.away_team.toLowerCase().includes(q) ||
+                f.league_name.toLowerCase().includes(q) ||
+                (f.league_country && f.league_country.toLowerCase().includes(q))
+              );
+            });
+
+            if (filteredFixtures.length === 0) {
+              return (
+                <div className="rounded-2xl bg-[#11131c] border border-slate-800 p-8 text-center space-y-3">
+                  <Search className="w-8 h-8 text-slate-500 mx-auto" />
+                  <h4 className="font-display font-bold text-lg text-white uppercase">
+                    No fixtures found matching &quot;{fixtureSearchQuery}&quot;
+                  </h4>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Try checking your spelling, switching to &apos;All Providers&apos;, or choosing a different match date.
+                  </p>
+                  <button
+                    onClick={() => setFixtureSearchQuery("")}
+                    className="px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-xs text-white font-bold uppercase tracking-wider cursor-pointer transition-colors"
+                  >
+                    Clear Search Filter
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {filteredFixtures.map((f) => (
+                  <div
+                    key={f.id}
+                    className="bg-[#11131c] border border-slate-800 hover:border-purple-500/40 rounded-xl p-4 flex items-center justify-between gap-4 transition-all"
+                  >
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                        <span className="font-semibold text-purple-300">{f.league_name}</span>
+                        <span>•</span>
+                        <span className="font-mono">{f.kickoff_time.slice(11, 16)} UTC</span>
+                        {f.source && (
+                          <span className="ml-1 px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-mono text-[9px] uppercase border border-slate-700">
+                            {f.source}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 font-display text-base font-bold text-white truncate">
+                        <img src={f.home_logo} className="w-5 h-5 object-contain" alt="" />
+                        <span>{f.home_team} vs {f.away_team}</span>
+                        <img src={f.away_logo} className="w-5 h-5 object-contain" alt="" />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleSelectFixtureToCreate(f)}
+                      className="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-display text-xs font-bold uppercase tracking-wider shrink-0 cursor-pointer shadow-sm active:scale-95 transition-transform"
+                    >
+                      Create Tip
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 
