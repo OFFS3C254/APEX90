@@ -10,12 +10,15 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const provider = (searchParams.get("provider") || "ALL") as any;
+  const refresh = searchParams.get("refresh") === "true";
 
   try {
-    const fixtures = await getFixturesForDate(date);
+    const fixtures = await getFixturesForDate(date, provider, refresh);
     return NextResponse.json({
       success: true,
       date,
+      provider,
       count: fixtures.length,
       fixtures,
     });

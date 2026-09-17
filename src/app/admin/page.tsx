@@ -40,6 +40,7 @@ export default function AdminDashboardPage() {
   // Fixtures
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [fixtureDate, setFixtureDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedProvider, setSelectedProvider] = useState<"ALL" | "API_SPORTS" | "FOOTBALL_DATA" | "THESPORTSDB">("ALL");
   const [loadingFixtures, setLoadingFixtures] = useState(false);
 
   // Sync Action
@@ -113,10 +114,13 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const fetchFixtures = async (date: string) => {
+  const [apiSportsKey, setApiSportsKey] = useState("");
+  const [thesportsdbKey, setThesportsdbKey] = useState("");
+
+  const fetchFixtures = async (date: string, provider = selectedProvider, refresh = false) => {
     setLoadingFixtures(true);
     try {
-      const res = await fetch(`/api/admin/fixtures?date=${date}`);
+      const res = await fetch(`/api/admin/fixtures?date=${date}&provider=${provider}&refresh=${refresh}`);
       const data = await res.json();
       if (data.success) {
         setFixtures(data.fixtures || []);
@@ -134,6 +138,9 @@ export default function AdminDashboardPage() {
       const data = await res.json();
       if (data.success) {
         setSettings(data.settings);
+        if (data.settings.FOOTBALL_DATA_API_KEY) setFootballApiKey(data.settings.FOOTBALL_DATA_API_KEY);
+        if (data.settings.API_SPORTS_KEY) setApiSportsKey(data.settings.API_SPORTS_KEY);
+        if (data.settings.THESPORTSDB_KEY) setThesportsdbKey(data.settings.THESPORTSDB_KEY);
       }
     } catch (e) {
       console.error(e);
@@ -301,6 +308,8 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     const payload: any = {};
     if (footballApiKey) payload.FOOTBALL_DATA_API_KEY = footballApiKey;
+    if (apiSportsKey) payload.API_SPORTS_KEY = apiSportsKey;
+    if (thesportsdbKey) payload.THESPORTSDB_KEY = thesportsdbKey;
     if (payheroChannel) payload.PAYHERO_CHANNEL_ID = payheroChannel;
     if (payheroKey) payload.PAYHERO_API_KEY = payheroKey;
 
@@ -310,7 +319,7 @@ export default function AdminDashboardPage() {
       body: JSON.stringify(payload),
     });
     fetchSettings();
-    alert("Settings saved!");
+    alert("Sports & Payment API Settings saved successfully!");
   };
 
   // Contextual picks based on market
@@ -607,26 +616,54 @@ export default function AdminDashboardPage() {
       {/* TAB 3: FIXTURES IMPORTER */}
       {activeTab === "fixtures" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3 bg-[#11131c] border border-slate-800 p-3.5 rounded-xl">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-300 uppercase">Select Fixtures Date:</span>
-              <input
-                type="date"
-                value={fixtureDate}
-                onChange={(e) => {
-                  setFixtureDate(e.target.value);
-                  fetchFixtures(e.target.value);
-                }}
-                className="bg-[#161824] border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white font-mono"
-              />
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-[#11131c] border border-slate-800 p-3.5 rounded-xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-300 uppercase">Date:</span>
+                <input
+                  type="date"
+                  value={fixtureDate}
+                  onChange={(e) => {
+                    setFixtureDate(e.target.value);
+                    fetchFixtures(e.target.value, selectedProvider);
+                  }}
+                  className="bg-[#161824] border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white font-mono"
+                />
+              </div>
+
+              {/* Provider Selection */}
+              <div className="flex items-center gap-1.5">
+                {[
+                  { id: "ALL", label: "All Providers" },
+                  { id: "API_SPORTS", label: "API-Sports (170+)" },
+                  { id: "FOOTBALL_DATA", label: "Football-Data.org" },
+                  { id: "THESPORTSDB", label: "TheSportsDB" },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setSelectedProvider(p.id as any);
+                      fetchFixtures(fixtureDate, p.id as any);
+                    }}
+                    className={`px-2.5 py-1 rounded text-[11px] font-bold transition-colors cursor-pointer ${
+                      selectedProvider === p.id
+                        ? "bg-purple-600 text-white"
+                        : "bg-slate-800 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <button
-              onClick={() => fetchFixtures(fixtureDate)}
+              onClick={() => fetchFixtures(fixtureDate, selectedProvider, true)}
+              disabled={loadingFixtures}
               className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 flex items-center gap-1.5 cursor-pointer"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingFixtures ? "animate-spin" : ""}`} />
+              Live Refresh
             </button>
           </div>
 
@@ -642,6 +679,11 @@ export default function AdminDashboardPage() {
                     <span className="font-semibold text-purple-300">{f.league_name}</span>
                     <span>•</span>
                     <span className="font-mono">{f.kickoff_time.slice(11, 16)} UTC</span>
+                    {f.source && (
+                      <span className="ml-1 px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-mono text-[9px] uppercase border border-slate-700">
+                        {f.source}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 font-display text-base font-bold text-white truncate">
@@ -704,12 +746,13 @@ export default function AdminDashboardPage() {
           </p>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold uppercase text-slate-400 block">
-              Football-Data.org API Token
+            <label className="text-xs font-bold uppercase text-slate-400 block flex items-center justify-between">
+              <span>Football-Data.org API Token</span>
+              <span className="text-[10px] text-emerald-400 font-mono font-bold">10 calls/min</span>
             </label>
             <input
               type="text"
-              placeholder="e.g. 847d92..."
+              placeholder="e.g. 905469e3d8cb4eb7a15f976ae8acc3c9"
               value={footballApiKey}
               onChange={(e) => setFootballApiKey(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-[#161824] border border-slate-700 text-xs text-white font-mono"
@@ -717,6 +760,34 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="space-y-1">
+            <label className="text-xs font-bold uppercase text-slate-400 block flex items-center justify-between">
+              <span>API-Sports (API-Football) Key</span>
+              <span className="text-[10px] text-emerald-400 font-mono font-bold">900+ Global Leagues</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. a93d67b75af53230ff604501a3205245"
+              value={apiSportsKey}
+              onChange={(e) => setApiSportsKey(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-[#161824] border border-slate-700 text-xs text-white font-mono"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase text-slate-400 block flex items-center justify-between">
+              <span>TheSportsDB Key</span>
+              <span className="text-[10px] text-purple-300 font-mono font-bold">Badge & Event Enricher</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. 3"
+              value={thesportsdbKey}
+              onChange={(e) => setThesportsdbKey(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-[#161824] border border-slate-700 text-xs text-white font-mono"
+            />
+          </div>
+
+          <div className="space-y-1 pt-2 border-t border-slate-800">
             <label className="text-xs font-bold uppercase text-slate-400 block">
               PayHero Channel ID
             </label>
