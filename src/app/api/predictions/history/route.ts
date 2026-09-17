@@ -60,7 +60,8 @@ export async function GET(req: NextRequest) {
     `).all().map((r: any) => r.date);
 
     // Filter predictions for the requested date or default to yesterday/latest date
-    const targetDate = selectedDate || (distinctDates.length > 1 ? distinctDates[1] : distinctDates[0]);
+    const todayStr = new Date().toISOString().split("T")[0];
+    const targetDate = selectedDate || (distinctDates.length > 1 ? distinctDates[1] : (distinctDates[0] || todayStr));
 
     let query = "SELECT * FROM predictions WHERE published = 1 AND date = ?";
     const params: any[] = [targetDate];
