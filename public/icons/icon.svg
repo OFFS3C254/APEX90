@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="128" fill="#090A0F"/>
+  <circle cx="256" cy="256" r="210" stroke="#7C3AED" stroke-width="12" fill="#12141C" />
+  <polygon points="256,90 395,170 395,340 256,420 117,340 117,170" fill="#1C1834" stroke="#8B5CF6" stroke-width="6"/>
+  <!-- Chevron A -->
+  <path d="M256 140 L160 350 L205 350 L256 230 L307 350 L352 350 Z" fill="#FFFFFF"/>
+  <path d="M256 140 L352 350 L307 350 L256 230 Z" fill="#7C3AED"/>
+  <rect x="200" y="270" width="112" height="24" fill="#FFFFFF"/>
+  <!-- Status dot -->
+  <circle cx="256" cy="115" r="14" fill="#10B981" filter="drop-shadow(0 0 8px #10B981)"/>
+</svg>

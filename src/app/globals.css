@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-base: #08090d;
+    --bg-card: #11131a;
+    --bg-raised: #181b26;
+    --border-subtle: #232736;
+    --border-glow: #7c3aed;
+    --color-purple-primary: #7c3aed;
+    --color-purple-accent: #8b5cf6;
+    --color-win: #10b981;
+    --color-loss: #ef4444;
+    --color-pending: #f59e0b;
+    --color-void: #64748b;
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: #e2e8f0;
+    font-family: var(--font-body), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Sportsbook Odds & Display Typography */
+.font-display {
+  font-family: var(--font-display), "Barlow Condensed", "Arial Narrow", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.font-mono-odds {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-feature-settings: "tnum";
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0d0e14;
+}
+::-webkit-scrollbar-thumb {
+  background: #232736;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b4259;
+}
+
+/* Custom animations */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Glass & Card Borders */
+.sports-card {
+  background: linear-gradient(180deg, #131620 0%, #0e1017 100%);
+  border: 1px solid #202433;
+}
+
+.sports-card:hover {
+  border-color: #353b52;
+}
+
+.sports-card-banker {
+  background: linear-gradient(180deg, #1b1429 0%, #11101a 100%);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 0 8px 32px -8px rgba(124, 58, 237, 0.25);
+}
+
+.sports-card-vip-locked {
+  background: linear-gradient(180deg, #161224 0%, #0d0b17 100%);
+  border: 1px dashed rgba(168, 85, 247, 0.35);
+}
