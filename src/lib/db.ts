@@ -2,8 +2,8 @@ import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
 
-// Ensure data directory exists
-const dataDir = path.join(process.cwd(), "data");
+// Ensure data directory exists (support Vercel serverless writable /tmp)
+const dataDir = process.env.VERCEL ? "/tmp" : path.join(process.cwd(), "data");
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
