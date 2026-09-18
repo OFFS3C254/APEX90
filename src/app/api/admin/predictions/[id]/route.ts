@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 import { gradePrediction } from "@/lib/grading";
+import { broadcastPushNotification } from "@/lib/pushNotifications";
 
 export async function PUT(
   req: NextRequest,
@@ -29,6 +30,7 @@ export async function PUT(
       analysis = existing.analysis,
       is_vip = existing.is_vip,
       is_banker = existing.is_banker,
+      booking_code = existing.booking_code,
       status = existing.status,
       home_score = existing.home_score,
       away_score = existing.away_score,
@@ -65,6 +67,7 @@ export async function PUT(
         analysis = ?,
         is_vip = ?,
         is_banker = ?,
+        booking_code = ?,
         status = ?,
         home_score = ?,
         away_score = ?,
@@ -80,6 +83,7 @@ export async function PUT(
       analysis,
       is_vip ? 1 : 0,
       is_banker ? 1 : 0,
+      booking_code ? booking_code.trim().toUpperCase() : null,
       finalStatus,
       home_score !== null && home_score !== undefined && home_score !== "" ? parseInt(home_score, 10) : null,
       away_score !== null && away_score !== undefined && away_score !== "" ? parseInt(away_score, 10) : null,
@@ -89,7 +93,22 @@ export async function PUT(
       id
     );
 
-    const updated = db.prepare("SELECT * FROM predictions WHERE id = ?").get(id);
+    const updated = db.prepare("SELECT * FROM predictions WHERE id = ?").get(id) as any;
+
+    // If prediction just transitioned to WON, trigger celebration push notification
+    if (finalStatus === "WON" && existing.status !== "WON") {
+      try {
+        await broadcastPushNotification({
+          title: `✅ WINNER CONFIRMED! ${existing.home_team} vs ${existing.away_team}`,
+          body: `Pick "${pick}" @ ${parseFloat(odds).toFixed(2)} odds landed! Check your sports slip.`,
+          url: "/history",
+          tag: `win-${id}`,
+        });
+      } catch (err) {
+        console.error("Failed to broadcast win notification:", err);
+      }
+    }
+
     return NextResponse.json({ success: true, prediction: updated });
   } catch (error: any) {
     console.error("Failed to update prediction:", error);

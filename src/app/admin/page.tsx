@@ -22,6 +22,10 @@ import {
   DollarSign,
   Loader2,
   X,
+  Send,
+  Ticket,
+  BellRing,
+  Bell,
 } from "lucide-react";
 import { Fixture } from "@/lib/sportsApi";
 
@@ -63,8 +67,13 @@ export default function AdminDashboardPage() {
     analysis: "",
     is_vip: false,
     is_banker: false,
+    booking_code: "",
+    broadcast_telegram: true,
+    broadcast_push: false,
     published: true,
   });
+
+  const [broadcastingId, setBroadcastingId] = useState<string | null>(null);
 
   // Score override state
   const [scoreData, setScoreData] = useState({
@@ -82,6 +91,10 @@ export default function AdminDashboardPage() {
   const [footballApiKey, setFootballApiKey] = useState("");
   const [payheroChannel, setPayheroChannel] = useState("");
   const [payheroKey, setPayheroKey] = useState("");
+  const [telegramBotToken, setTelegramBotToken] = useState("");
+  const [telegramChannelId, setTelegramChannelId] = useState("");
+  const [sportybetDailyCode, setSportybetDailyCode] = useState("");
+  const [sportybetDailyDesc, setSportybetDailyDesc] = useState("");
 
   const fetchStats = async () => {
     setLoadingStats(true);
@@ -142,6 +155,12 @@ export default function AdminDashboardPage() {
         if (data.settings.FOOTBALL_DATA_API_KEY) setFootballApiKey(data.settings.FOOTBALL_DATA_API_KEY);
         if (data.settings.API_SPORTS_KEY) setApiSportsKey(data.settings.API_SPORTS_KEY);
         if (data.settings.THESPORTSDB_KEY) setThesportsdbKey(data.settings.THESPORTSDB_KEY);
+        if (data.settings.PAYHERO_CHANNEL_ID) setPayheroChannel(data.settings.PAYHERO_CHANNEL_ID);
+        if (data.settings.PAYHERO_API_KEY) setPayheroKey(data.settings.PAYHERO_API_KEY);
+        if (data.settings.TELEGRAM_BOT_TOKEN) setTelegramBotToken(data.settings.TELEGRAM_BOT_TOKEN);
+        if (data.settings.TELEGRAM_CHANNEL_ID) setTelegramChannelId(data.settings.TELEGRAM_CHANNEL_ID);
+        if (data.settings.SPORTYBET_DAILY_CODE) setSportybetDailyCode(data.settings.SPORTYBET_DAILY_CODE);
+        if (data.settings.SPORTYBET_DAILY_DESC) setSportybetDailyDesc(data.settings.SPORTYBET_DAILY_DESC);
       }
     } catch (e) {
       console.error(e);
@@ -180,9 +199,12 @@ export default function AdminDashboardPage() {
       pick: "1",
       odds: "1.85",
       confidence: "85",
-      analysis: `${fix.home_team} strong home form against ${fix.away_team}. Tactical expectation of intense forward pressing.`,
+      analysis: `${fix.home_team} strong form against ${fix.away_team}. High quantitative probability based on expected goals (xG).`,
       is_vip: false,
       is_banker: false,
+      booking_code: sportybetDailyCode || "",
+      broadcast_telegram: true,
+      broadcast_push: false,
       published: true,
     });
     setShowCreateModal(true);
@@ -212,6 +234,9 @@ export default function AdminDashboardPage() {
         analysis: formData.analysis,
         is_vip: formData.is_vip ? 1 : 0,
         is_banker: formData.is_banker ? 1 : 0,
+        booking_code: formData.booking_code ? formData.booking_code.trim().toUpperCase() : null,
+        broadcast_telegram: formData.broadcast_telegram,
+        broadcast_push: formData.broadcast_push,
         published: formData.published ? 1 : 0,
       };
 
@@ -228,6 +253,53 @@ export default function AdminDashboardPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // Instant Broadcast Handlers
+  const handleBroadcastTelegramNow = async (p: any) => {
+    setBroadcastingId(p.id);
+    try {
+      const res = await fetch("/api/admin/notifications/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "TELEGRAM",
+          prediction_id: p.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("✅ Sent to Telegram VIP Channel successfully!");
+      } else {
+        alert("Notice: " + (data.error || data.message || "Telegram broadcast failed. Please check your Bot Token & Channel ID in Settings."));
+      }
+    } catch (err: any) {
+      alert("Broadcast error: " + err.message);
+    } finally {
+      setBroadcastingId(null);
+    }
+  };
+
+  const handleBroadcastPushNow = async (p: any) => {
+    setBroadcastingId(p.id);
+    try {
+      const res = await fetch("/api/admin/notifications/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "PUSH",
+          title: p.is_banker ? "⚡ BANKER OF THE DAY!" : `⚽ NEW TIP: ${p.home_team} vs ${p.away_team}`,
+          body: `Pick: ${p.market} - ${p.pick} @ ${p.odds.toFixed(2)}. ${p.booking_code ? `SportyBet: ${p.booking_code}. ` : ""}Tap for analysis!`,
+          url: "/",
+        }),
+      });
+      const data = await res.json();
+      alert(`🔔 Web push notification sent to ${data.sent || 0} subscriber device(s)!`);
+    } catch (err: any) {
+      alert("Push notification error: " + err.message);
+    } finally {
+      setBroadcastingId(null);
     }
   };
 
@@ -313,6 +385,10 @@ export default function AdminDashboardPage() {
     if (thesportsdbKey) payload.THESPORTSDB_KEY = thesportsdbKey;
     if (payheroChannel) payload.PAYHERO_CHANNEL_ID = payheroChannel;
     if (payheroKey) payload.PAYHERO_API_KEY = payheroKey;
+    if (telegramBotToken) payload.TELEGRAM_BOT_TOKEN = telegramBotToken;
+    if (telegramChannelId) payload.TELEGRAM_CHANNEL_ID = telegramChannelId;
+    if (sportybetDailyCode) payload.SPORTYBET_DAILY_CODE = sportybetDailyCode.toUpperCase();
+    if (sportybetDailyDesc) payload.SPORTYBET_DAILY_DESC = sportybetDailyDesc;
 
     await fetch("/api/admin/settings", {
       method: "POST",
@@ -320,7 +396,7 @@ export default function AdminDashboardPage() {
       body: JSON.stringify(payload),
     });
     fetchSettings();
-    alert("Sports & Payment API Settings saved successfully!");
+    alert("Sports, Telegram, SportyBet & Payment API settings saved successfully!");
   };
 
   // Contextual picks based on market
@@ -535,9 +611,15 @@ export default function AdminDashboardPage() {
                     </td>
 
                     <td className="p-3">
-                      <span className="px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-500/30 font-bold text-[11px]">
+                      <span className="px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-500/30 font-bold text-[11px] block w-fit">
                         {p.market}: {p.pick}
                       </span>
+                      {p.booking_code && (
+                        <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded bg-rose-950/80 border border-rose-500/40 text-rose-300 font-mono text-[10px] font-bold">
+                          <Ticket className="w-2.5 h-2.5 text-rose-400" />
+                          SportyBet: {p.booking_code}
+                        </span>
+                      )}
                     </td>
 
                     <td className="p-3 font-mono font-bold text-white">
@@ -585,6 +667,26 @@ export default function AdminDashboardPage() {
 
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {/* Telegram Broadcast Button */}
+                        <button
+                          onClick={() => handleBroadcastTelegramNow(p)}
+                          disabled={broadcastingId === p.id}
+                          className="p-1.5 rounded bg-sky-950/70 hover:bg-sky-900 border border-sky-500/40 text-sky-400 hover:text-white cursor-pointer transition-colors"
+                          title="Broadcast to Telegram VIP Channel"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Push Notification Button */}
+                        <button
+                          onClick={() => handleBroadcastPushNow(p)}
+                          disabled={broadcastingId === p.id}
+                          className="p-1.5 rounded bg-purple-950/70 hover:bg-purple-900 border border-purple-500/40 text-purple-400 hover:text-white cursor-pointer transition-colors"
+                          title="Send Web Push Notification Alert"
+                        >
+                          <BellRing className="w-3.5 h-3.5" />
+                        </button>
+
                         <button
                           onClick={() => {
                             setShowScoreModal(p);
@@ -887,11 +989,89 @@ export default function AdminDashboardPage() {
             />
           </div>
 
+          {/* Telegram VIP Channel Integration */}
+          <div className="pt-3 border-t border-slate-800 space-y-3">
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                <Send className="w-3.5 h-3.5" />
+                Telegram VIP Channel Broadcast Bot
+              </h4>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Automatically formats and dispatches daily odds, bankers, and SportyBet codes to your VIP subscribers.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 block">
+                Telegram Bot Token (from @BotFather)
+              </label>
+              <input
+                type="password"
+                placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                value={telegramBotToken}
+                onChange={(e) => setTelegramBotToken(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-[#161824] border border-slate-700 text-xs text-white font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 block">
+                Telegram Channel ID / Username
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. @apex90vip or -1001234567890"
+                value={telegramChannelId}
+                onChange={(e) => setTelegramChannelId(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-[#161824] border border-slate-700 text-xs text-white font-mono"
+              />
+            </div>
+          </div>
+
+          {/* SportyBet Master Booking Code Showcase */}
+          <div className="pt-3 border-t border-slate-800 space-y-3">
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                <Ticket className="w-3.5 h-3.5" />
+                SportyBet Daily Master Slip Showcase
+              </h4>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Appears on the homepage banner with a 1-click copy button and direct SportyBet redirect.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 block">
+                SportyBet Master Booking Code
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. BC94X2"
+                value={sportybetDailyCode}
+                onChange={(e) => setSportybetDailyCode(e.target.value.toUpperCase())}
+                className="w-full px-3 py-2 rounded-lg bg-[#161824] border border-rose-500/40 text-xs text-rose-300 font-mono font-bold tracking-wider uppercase"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 block">
+                Accumulator Description & Odds
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Today's High-Yield Multi-Bet Accumulator (12.40 Odds)"
+                value={sportybetDailyDesc}
+                onChange={(e) => setSportybetDailyDesc(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-[#161824] border border-slate-700 text-xs text-white"
+              />
+            </div>
+          </div>
+
           <button
             type="submit"
-            className="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+            className="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer mt-4"
           >
-            Save API Configurations
+            Save All Configurations
           </button>
         </form>
       )}
@@ -985,6 +1165,24 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
+              {/* SportyBet Booking Code */}
+              <div>
+                <label className="text-xs font-bold uppercase text-rose-300 block mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Ticket className="w-3.5 h-3.5 text-rose-400" />
+                    SportyBet Booking Code
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">Optional</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. BC94X2"
+                  value={formData.booking_code}
+                  onChange={(e) => setFormData({ ...formData, booking_code: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 rounded-lg bg-[#161824] border border-rose-500/40 text-xs text-rose-300 font-mono tracking-wider uppercase font-bold"
+                />
+              </div>
+
               {/* Analysis */}
               <div>
                 <label className="text-xs font-bold uppercase text-slate-400 block mb-1">
@@ -999,27 +1197,53 @@ export default function AdminDashboardPage() {
                 />
               </div>
 
-              {/* Toggles */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#161824] border border-slate-800">
-                <label className="flex items-center gap-2 text-xs font-bold text-amber-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_banker}
-                    onChange={(e) => setFormData({ ...formData, is_banker: e.target.checked })}
-                    className="rounded text-purple-600"
-                  />
-                  Banker of the Day
-                </label>
+              {/* Toggles & Automated Dispatch */}
+              <div className="space-y-2.5 p-3 rounded-xl bg-[#161824] border border-slate-800">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <label className="flex items-center gap-2 text-xs font-bold text-amber-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_banker}
+                      onChange={(e) => setFormData({ ...formData, is_banker: e.target.checked })}
+                      className="rounded text-purple-600"
+                    />
+                    Banker of the Day
+                  </label>
 
-                <label className="flex items-center gap-2 text-xs font-bold text-purple-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_vip}
-                    onChange={(e) => setFormData({ ...formData, is_vip: e.target.checked })}
-                    className="rounded text-purple-600"
-                  />
-                  VIP Exclusive
-                </label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-purple-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_vip}
+                      onChange={(e) => setFormData({ ...formData, is_vip: e.target.checked })}
+                      className="rounded text-purple-600"
+                    />
+                    VIP Exclusive
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between pt-0.5">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-sky-400 cursor-pointer" title="Auto-broadcast to Telegram VIP Channel">
+                    <input
+                      type="checkbox"
+                      checked={formData.broadcast_telegram}
+                      onChange={(e) => setFormData({ ...formData, broadcast_telegram: e.target.checked })}
+                      className="rounded text-sky-500"
+                    />
+                    <Send className="w-3 h-3" />
+                    <span>Telegram VIP Broadcast</span>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 cursor-pointer" title="Send Push Notification to PWA Subscribers">
+                    <input
+                      type="checkbox"
+                      checked={formData.broadcast_push}
+                      onChange={(e) => setFormData({ ...formData, broadcast_push: e.target.checked })}
+                      className="rounded text-emerald-500"
+                    />
+                    <BellRing className="w-3 h-3" />
+                    <span>Web Push Alert</span>
+                  </label>
+                </div>
               </div>
 
               <button

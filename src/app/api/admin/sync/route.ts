@@ -3,6 +3,7 @@ import { syncScoresAndAutoGrade } from "@/lib/sportsApi";
 import { getAdminSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { gradePrediction } from "@/lib/grading";
+import { broadcastPushNotification } from "@/lib/pushNotifications";
 
 export async function POST(req: NextRequest) {
   // Check either Admin session OR Cron Secret in Authorization header
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
           matchStatus: fix.status,
         });
 
-        if (grading.status !== "PENDING") {
+          if (grading.status !== "PENDING") {
           db.prepare(`
             UPDATE predictions 
             SET status = ?, home_score = ?, away_score = ?, match_status = ?, updated_at = ?
@@ -50,6 +51,19 @@ export async function POST(req: NextRequest) {
             outcome: grading.status,
             reason: grading.reason,
           });
+
+          if (grading.status === "WON") {
+            try {
+              await broadcastPushNotification({
+                title: `✅ MATCH WON! ${p.home_team} vs ${p.away_team}`,
+                body: `Pick "${p.pick}" @ ${parseFloat(p.odds).toFixed(2)} landed! Status: FT ${fix.home_score}-${fix.away_score}`,
+                url: "/history",
+                tag: `win-${p.id}`,
+              });
+            } catch (err) {
+              console.error("Auto-grade push notification failed:", err);
+            }
+          }
         }
       }
     }

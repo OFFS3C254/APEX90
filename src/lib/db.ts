@@ -102,13 +102,37 @@ function initSchema(db: DatabaseSync) {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id TEXT PRIMARY KEY,
+      endpoint TEXT UNIQUE NOT NULL,
+      keys_p256dh TEXT NOT NULL,
+      keys_auth TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS community_votes (
+      prediction_id TEXT NOT NULL,
+      vote TEXT NOT NULL,
+      voter_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (prediction_id, voter_hash)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_predictions_date ON predictions(date);
     CREATE INDEX IF NOT EXISTS idx_predictions_market ON predictions(market);
     CREATE INDEX IF NOT EXISTS idx_predictions_status ON predictions(status);
     CREATE INDEX IF NOT EXISTS idx_predictions_published ON predictions(published);
     CREATE INDEX IF NOT EXISTS idx_predictions_is_vip ON predictions(is_vip);
     CREATE INDEX IF NOT EXISTS idx_subscriptions_phone ON subscriptions(phone);
+    CREATE INDEX IF NOT EXISTS idx_community_votes_pred ON community_votes(prediction_id);
   `);
+
+  // Migration: Ensure booking_code column exists on predictions
+  try {
+    db.exec("ALTER TABLE predictions ADD COLUMN booking_code TEXT DEFAULT NULL;");
+  } catch {
+    // Column already exists
+  }
 }
 
 export const db = getDatabase();

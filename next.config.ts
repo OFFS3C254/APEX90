@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["node:sqlite", "bcryptjs"],
+  serverExternalPackages: ["node:sqlite", "bcryptjs", "web-push"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },

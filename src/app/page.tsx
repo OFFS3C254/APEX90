@@ -18,6 +18,7 @@ import {
 import BankerCard from "@/components/BankerCard";
 import MatchCard, { PredictionItem } from "@/components/MatchCard";
 import VIPModal from "@/components/VIPModal";
+import SportyBetBanner from "@/components/SportyBetBanner";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -124,6 +125,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* SportyBet Daily Master Slip Showcase */}
+      <SportyBetBanner />
 
       {/* Banker of the Day Section */}
       {banker && (

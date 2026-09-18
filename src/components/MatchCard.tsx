@@ -12,7 +12,11 @@ import {
   ChevronDown,
   ChevronUp,
   TrendingUp,
+  History,
+  Ticket,
 } from "lucide-react";
+import H2HModal from "./H2HModal";
+import CommunityPoll from "./CommunityPoll";
 
 export interface PredictionItem {
   id: string;
@@ -37,6 +41,7 @@ export interface PredictionItem {
   home_score: number | null;
   away_score: number | null;
   match_status: string;
+  booking_code?: string;
 }
 
 interface MatchCardProps {
@@ -51,6 +56,7 @@ export default function MatchCard({
   onUnlockVip,
 }: MatchCardProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [showH2H, setShowH2H] = useState(false);
 
   const isLocked = p.is_vip === 1 && !isVipUnlocked;
 
@@ -246,28 +252,65 @@ export default function MatchCard({
           </div>
         )}
 
-        {/* Collapsible Tactical Analysis */}
-        {!isLocked && p.analysis && (
-          <div className="mt-3">
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 transition-colors py-1"
-            >
-              <span className="flex items-center gap-1 font-medium">
-                <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
-                Key Stats & Tactical Analysis
-              </span>
-              {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-
-            {showDetails && (
-              <div className="mt-2 p-3 rounded-lg bg-[#0e1017] border border-slate-800/80 text-xs text-slate-300 leading-relaxed animate-in fade-in duration-150">
-                {p.analysis}
-              </div>
-            )}
+        {/* SportyBet Specific Booking Code if present */}
+        {p.booking_code && (
+          <div className="mt-2.5 px-3 py-1.5 rounded-lg bg-rose-950/40 border border-rose-500/30 flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1 text-rose-300 font-bold text-[11px]">
+              <Ticket className="w-3.5 h-3.5" />
+              SportyBet Code:
+            </span>
+            <span className="font-mono font-black text-white px-2 py-0.5 bg-rose-900/60 rounded border border-rose-500/40 tracking-wider">
+              {p.booking_code}
+            </span>
           </div>
         )}
+
+        {/* Action Buttons: Key Stats & H2H */}
+        <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60">
+          {!isLocked && p.analysis && (
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 transition-colors py-1 cursor-pointer"
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
+              <span className="font-medium">Tactical Notes</span>
+              {showDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowH2H(true)}
+            className="ml-auto flex items-center gap-1 text-xs text-purple-300 hover:text-purple-200 px-2.5 py-1 rounded-lg bg-purple-950/50 hover:bg-purple-900/50 border border-purple-500/30 font-semibold cursor-pointer transition-colors"
+          >
+            <History className="w-3.5 h-3.5 text-purple-400" />
+            <span>H2H & Form</span>
+          </button>
+        </div>
+
+        {/* Collapsible Tactical Analysis */}
+        {!isLocked && p.analysis && showDetails && (
+          <div className="mt-2 p-3 rounded-lg bg-[#0e1017] border border-slate-800/80 text-xs text-slate-300 leading-relaxed animate-in fade-in duration-150">
+            {p.analysis}
+          </div>
+        )}
+
+        {/* Community Sentiment Poll */}
+        <CommunityPoll
+          predictionId={p.id}
+          homeTeam={p.home_team}
+          awayTeam={p.away_team}
+        />
       </div>
+
+      {/* H2H & Form Modal */}
+      <H2HModal
+        isOpen={showH2H}
+        onClose={() => setShowH2H(false)}
+        homeTeam={p.home_team}
+        awayTeam={p.away_team}
+        homeLogo={p.home_logo}
+        awayLogo={p.away_logo}
+      />
     </div>
   );
 }

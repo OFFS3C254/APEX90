@@ -14,6 +14,7 @@ import {
   X,
   Radio,
 } from "lucide-react";
+import PushNotificationBell from "./PushNotificationBell";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -127,6 +128,8 @@ export default function Navbar() {
 
             {/* Right CTAs */}
             <div className="flex items-center gap-2">
+              <PushNotificationBell />
+
               <Link
                 href="/vip"
                 className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold tracking-wide shadow-md shadow-purple-950 transition-all border border-purple-400/30"

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
+import { broadcastPredictionToTelegram } from "@/lib/telegram";
+import { broadcastPushNotification } from "@/lib/pushNotifications";
 
 export async function GET(req: NextRequest) {
   const session = await getAdminSession();
@@ -61,6 +63,9 @@ export async function POST(req: NextRequest) {
       analysis,
       is_vip,
       is_banker,
+      booking_code,
+      broadcast_telegram = false,
+      broadcast_push = false,
       published = 1,
     } = body;
 
@@ -82,8 +87,8 @@ export async function POST(req: NextRequest) {
         id, fixture_id, league_name, league_country, league_logo,
         home_team, away_team, home_logo, away_logo, kickoff_time,
         date, market, pick, odds, confidence, analysis, is_vip,
-        is_banker, status, home_score, away_score, match_status, published, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', NULL, NULL, 'NS', ?, ?, ?)
+        is_banker, booking_code, status, home_score, away_score, match_status, published, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', NULL, NULL, 'NS', ?, ?, ?)
     `).run(
       id,
       fixture_id || `FIX-${Date.now()}`,
@@ -103,13 +108,71 @@ export async function POST(req: NextRequest) {
       analysis || "Tactical intelligence analysis.",
       is_vip ? 1 : 0,
       is_banker ? 1 : 0,
+      booking_code ? booking_code.trim().toUpperCase() : null,
       published ? 1 : 0,
       now,
       now
     );
 
-    const created = db.prepare("SELECT * FROM predictions WHERE id = ?").get(id);
-    return NextResponse.json({ success: true, prediction: created }, { status: 201 });
+    const created: any = db.prepare("SELECT * FROM predictions WHERE id = ?").get(id);
+
+    // Automated Broadcast Triggers
+    let telegramSent = false;
+    let pushSent = false;
+
+    // Telegram VIP Broadcast (if flagged or if banker)
+    if (broadcast_telegram || is_banker) {
+      try {
+        const tgRes = await broadcastPredictionToTelegram({
+          home_team,
+          away_team,
+          league_name: league_name || "Football",
+          kickoff_time: kickoff_time || `${targetDate}T15:00:00Z`,
+          market,
+          pick,
+          odds: parseFloat(odds) || 1.80,
+          confidence: parseInt(confidence, 10) || 80,
+          analysis: analysis || "Tactical intelligence memo.",
+          is_banker: !!is_banker,
+          is_vip: !!is_vip,
+          booking_code: booking_code ? booking_code.trim().toUpperCase() : undefined,
+        });
+        telegramSent = tgRes.success;
+      } catch (tgErr) {
+        console.error("Telegram broadcast failed:", tgErr);
+      }
+    }
+
+    // Web Push Notification Broadcast (if flagged or if banker)
+    if (broadcast_push || is_banker) {
+      try {
+        const pushTitle = is_banker
+          ? "⚡ BANKER OF THE DAY RELEASED!"
+          : is_vip
+          ? "👑 NEW VIP TIP PUBLISHED!"
+          : `🔥 NEW PICK: ${home_team} vs ${away_team}`;
+
+        const pushBody = `${market}: ${pick} @ ${parseFloat(odds).toFixed(2)} odds. ${
+          booking_code ? `SportyBet: ${booking_code}. ` : ""
+        }Check tactical intel now!`;
+
+        await broadcastPushNotification({
+          title: pushTitle,
+          body: pushBody,
+          url: "/",
+          tag: `pred-${id}`,
+        });
+        pushSent = true;
+      } catch (pushErr) {
+        console.error("Push broadcast failed:", pushErr);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      prediction: created,
+      broadcasts: { telegramSent, pushSent },
+    }, { status: 201 });
   } catch (error: any) {
     console.error("Failed to create prediction:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
